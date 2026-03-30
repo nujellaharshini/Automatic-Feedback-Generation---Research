@@ -1,0 +1,126 @@
+{
+  ".DS_Store": {
+    "error": "no results.json"
+  },
+  "Ayush_Pandey": {
+    "tests": [
+      {
+        "name": "test_color_code_resistance_four (test.Lab07AutoGrader)",
+        "score": 0.0,
+        "max_score": 5,
+        "status": "failed",
+        "output": "Test Failed: 840 != 14000000\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_color_code_resistance_one (test.Lab07AutoGrader)",
+        "score": 0.0,
+        "max_score": 5,
+        "status": "failed",
+        "output": "Test Failed: 200 != 1000\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_color_code_resistance_three (test.Lab07AutoGrader)",
+        "score": 0.0,
+        "max_score": 5,
+        "status": "failed",
+        "output": "Test Failed: 620 != 3100\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_color_code_resistance_two (test.Lab07AutoGrader)",
+        "score": 0.0,
+        "max_score": 5,
+        "status": "failed",
+        "output": "Test Failed: 400 != 2000\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_multimeter_range_four (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "output": "Measure this resistor with a multimeter that has a range of 200000\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_multimeter_range_one (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "output": "Measure this resistor with a multimeter that has a range of 200\n",
+        "visibility": "visible"
+      },
+      {
+        "name": "test_multimeter_range_three (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "output": "Measure this resistor with a multimeter that has a range of 20000\n",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_multimeter_range_two (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "output": "Measure this resistor with a multimeter that has a range of 2000\n",
+        "visibility": "visible"
+      },
+      {
+        "name": "test_parellel_one (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "visible"
+      },
+      {
+        "name": "test_parellel_three (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_parellel_two (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_series_one (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "visible"
+      },
+      {
+        "name": "test_series_two (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "hidden"
+      },
+      {
+        "name": "test_set_resistance_one (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "visible"
+      },
+      {
+        "name": "test_set_resistance_two (test.Lab07AutoGrader)",
+        "score": 5,
+        "max_score": 5,
+        "status": "passed",
+        "visibility": "visible"
+      }
+    ],
+    "leaderboard": [],
+    "visibility": "visible",
+    "execution_time": "0.00",
+    "score": 55.0
+  }
+}

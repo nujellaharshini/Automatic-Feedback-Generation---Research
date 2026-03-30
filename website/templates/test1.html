@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Title</title>
+  <link href="Times New Roman" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+  <h1>Title</h1>
+  <h2>Assignment Name</h2>
+
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="icon">Upload File</div>
+    <p>Drag & drop a file here, or browse</p>
+    <input type="file" id="file-input" multiple accept=".py, .pdf"/>
+  </div>
+
+  <div id="status"></div>
+  <div class="file-list" id="file-list"></div>
+
+  <script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const status = document.getElementById('status');
+  const fileList = document.getElementById('file-list');
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files, false);
+  });
+
+  fileInput.addEventListener('change', () => {
+    handleFiles(fileInput.files, fileInput._reupload || false);
+    fileInput._reupload = false;
+    fileInput.value = '';
+  });
+
+  async function handleFiles(files, reupload = false) {
+    for (const file of files) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['py', 'pdf'].includes(ext)) {
+        status.className = 'error';
+        status.textContent = `"${file.name}" is not allowed. Only .py and .pdf files.`;
+        addFileItem(file.name, file.size, false, null, false);
+        continue;
+      }
+
+      status.className = '';
+      status.textContent = `Uploading ${file.name}...`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('reupload', reupload ? 'true' : 'false');
+      formData.append('original_name', reupload ? fileInput._originalName : '');
+
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        addFileItem(file.name, file.size, data.success, data.error, reupload);
+        status.className = data.success ? '' : 'error';
+        status.textContent = data.success
+          ? reupload ? `"${file.name}"replaced successfully` : `Saved`
+          : `${data.error}`;
+      } catch {
+        addFileItem(file.name, file.size, false, null, reupload);
+        status.className = 'error';
+        status.textContent = 'Could not reach server';
+      }
+    }
+  }
+
+  function addFileItem(name, size, success, error = null, reupload = false) {
+    // If re-uploading, remove the old entry for this file if it exists
+    if (reupload) {
+      const existing = document.querySelector(`.file-item[data-name="${name}"]`);
+      if (existing) existing.remove();
+    }
+
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.dataset.name = name;
+    item.innerHTML = `
+      <span class="name">${name}</span>
+      <span class="size">${(size / 1024).toFixed(1)} KB</span>
+      <span class="badge ${success ? '' : 'error'}">${success ? (reupload ? 'Replaced' : 'Saved') : 'Failed'}</span>
+      ${success ? `<button class="reupload-btn" onclick="triggerReupload('${name}')">Replace</button>` : ''}
+    `;
+    fileList.prepend(item);
+  }
+
+  function triggerReupload(originalName) {
+  fileInput._reupload = true;
+  fileInput._originalName = originalName;
+  fileInput.click();
+}
+</script>
+
+</body>
+</html>

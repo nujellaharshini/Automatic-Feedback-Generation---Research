@@ -1,0 +1,19 @@
+# Ignore a specific file
+.env 
+local_autograder/results_cleaned.sql 
+assignment.txt
+feedback.json
+lab0_autograder.zip
+student_feedback_total.json
+
+# Ignore a folder
+local_autograder/submissions/
+local_autograder/results/
+Extra_files/
+website/submissions/
+# Ignore file types
+*.pdf 
+*.sqlite
+*.db
+*.key 
+*.txt
