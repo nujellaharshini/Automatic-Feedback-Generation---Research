@@ -11,7 +11,7 @@ Introductory programming students often receive unhelpful autograder messages li
 Students access the tool directly through Canvas via an **LTI-integrated web app**, where they can upload their code, run the autograder, see their results in real time, and submit — all without ever leaving their course workflow. 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **LTI-integrated web app** — students launch directly from Canvas, no separate login needed
 - **End-to-end automated pipeline** — upload → grade → AI feedback → submit to Canvas, all in one flow
@@ -71,12 +71,12 @@ submissions - name, status
 ```
 ---
 
-## 🏗️ Full System Architecture
+## Full System Architecture
 
 
 ---
 
-## 🤖 AI / LLM Pipeline
+## AI / LLM Pipeline
 
 ### 1. Data Ingestion
 - Submissions are graded inside a **Dockerized local replica** of the Gradescope environment
@@ -101,7 +101,7 @@ submissions - name, status
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Category | Tools |
 |---|---|
@@ -115,16 +115,15 @@ submissions - name, status
 
 ---
 
-## ⚙️ How to Run
-
 ### Prerequisites
 - Python 3.13+
 - Docker
 - OpenAI API key
 - Canvas API token
 - Canvas LTI external tool credentials
+- to download requirements: pip install -r requirements.txt
 
-## 📁 Project Structure
+## Project Structure
 ```
 ├── website/
 │   ├── server.py             # Flask app + all API routes
@@ -149,7 +148,7 @@ submissions - name, status
 
 ---
 
-## 🔭 Future Work
+## Future Work
 Still work in-progress, will be deploying in a Intro Python course.
 
 ---
