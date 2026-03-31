@@ -52,18 +52,6 @@ The app supports both **LTI 1.3** (primary) and **LTI 1.1** (fallback):
 - **LTI 1.1** uses OAuth consumer key + shared secret as a fallback
 - On launch, Canvas passes the student's name, email, Canvas user ID, course ID, and assignment ID — all stored in the Flask session and SQLite database
 
-### API Endpoints
-
-| Method | Route | Description |
-|---|---|---|
-| `GET/POST` | `/lti13/login` | LTI 1.3 OIDC login initiation |
-| `POST` | `/lti13/launch` | LTI 1.3 JWT token launch |
-| `GET` | `/lti13/jwks` | Serves public JWKS for Canvas verification |
-| `POST` | `/lti-launch` | LTI 1.1 fallback launch |
-| `POST` | `/upload` | Student file upload (.py or .pdf) |
-| `POST` | `/grade` | Runs Docker autograder, returns test results + AI feedback |
-| `POST` | `/submit` | Submits file + feedback comment to Canvas via REST API |
-
 ### Database Schema
 
 The SQLite database (`website.db`) tracks the full student lifecycle:
@@ -76,6 +64,11 @@ feedback       — student_id, assignment_id, feedback_text, generated_at
 lti_state      — state, nonce, created_at (for LTI 1.3 OIDC flow)
 ```
 
+The SQLite database (`tpch.sqlite`) tracks the full student results:
+```
+results_filtered - name, unit test name, status (failed/passed), output
+submissions - name, status
+```
 ---
 
 ## 🏗️ Full System Architecture
@@ -83,31 +76,28 @@ lti_state      — state, nonce, created_at (for LTI 1.3 OIDC flow)
 
 ---
 
-## 🤖 AI / LLM Pipeline (Deep Dive)
+## 🤖 AI / LLM Pipeline
 
-### 1. 🐳 Data Ingestion
+### 1. Data Ingestion
 - Submissions are graded inside a **Dockerized local replica** of the Gradescope environment
 - A Bash script mounts each student's folder and runs the autograder
 - Output is collected as structured **JSON files per student**
 
-### 2. 🧹 ETL & Preprocessing
+### 2. ETL & Preprocessing
 - A Python ETL script strips metadata and loads only **failed test cases + error messages** into SQLite
-- Reduces dataset size by **over 80%**, improving LLM query speed and reducing token usage
 
-### 3. 🧠 Rule-Augmented Context Injection
+### 3. Rule-Augmented Context Injection
 - A **regex-based NLP layer** classifies each error into predefined categories (e.g. `OUTPUT_MISMATCH`, `TYPE_NONE`, `MATH_OPS_INCORRECT`)
 - If an error category has recurred across prior submissions, this history is injected into the prompt
 - Enables **personalized, longitudinal feedback** that acknowledges individual student patterns
 
-### 4. 💬 LLM Feedback Generation
-- The enriched prompt is sent to **OpenAI GPT** via API
-- Three prompt strategies were tested — **Few-Shot + Role-Based + Instructional** achieved the best mean score of **3.97/5**
+### 4. LLM Feedback Generation
+- The prompt is sent to **OpenAI GPT** via API
 - The model guides students toward the correct answer **without revealing the solution**
 
-### 5. 📬 Canvas Delivery
+### 5. Canvas Delivery
 - Feedback is posted to Canvas via the **REST API** as a submission comment in SpeedGrader
-- The student's file is also submitted to Canvas programmatically via `submit_file_to_canvas()`
-- A **dry-run mode** lets instructors review AI output before publishing
+- Rubric is updated with student scores
 
 ---
 
@@ -122,57 +112,6 @@ lti_state      — state, nonce, created_at (for LTI 1.3 OIDC flow)
 | Database | SQLite |
 | AI / LLM | OpenAI API (GPT) |
 | LMS Integration | Canvas REST API |
-| Autograder | Gradescope |
-| Scripting | Bash |
-| Config | YAML, `.env` |
-
----
-
-## 🔬 Prompt Engineering Experiments
-
-Three prompt strategies evaluated on 49 student submissions, rated on a 5-point rubric:
-
-| Prompt Strategy | Clarity | Correctness | Actionability | Mean Score |
-|---|---|---|---|---|
-| Zero-Shot + Role-Based | 4.2 | 3.73 | 2.8 | 3.43 |
-| **Few-Shot + Role-Based + Instructional** | **4.67** | **4.67** | **3.73** | **3.97** ✅ |
-| Meta Prompt + Contextual + Few-Shot | 4.07 | 4.47 | 3.67 | 3.80 |
-
----
-
-## 🧠 Rule-Augmented NLP
-
-| Error Code | Category | Example |
-|---|---|---|
-| `OUTPUT_MISMATCH` | Output format | Did not find expected output |
-| `TYPE_NONE` | None handling | Unsupported operand for NoneType |
-| `MATH_OPS_INCORRECT` | Math syntax | Used `^` instead of `**` |
-| `LOOP_NEVER_UPDATES` | Loops | Infinite loop detected |
-| `FUNC_MISSING_RETURN` | Return values | Returned None |
-
-When a student repeats the same error type across submissions:
-> *"compute_power misuses resistance and returns wrong value. **We've noticed this has recurred** — please review equation to code concepts before resubmitting."*
-
----
-
-## 📊 Results
-
-### Pilot Study — EE 021, Fall 2025
-
-- 📬 **9 out of 34 students** received feedback (others had perfect scores)
-- ✅ **5 out of 9 (55%)** resubmitted and achieved full marks after receiving feedback
-- 📈 Majority rated feedback **4–5/5 for clarity and helpfulness**
-
-> ```
-> ![Clarity vs Helpfulness](images/clarity_helpfulness.png)  ← Figure 8
-> ```
-
-### Student Quotes
-> *"It's a nice addition to what we have on Gradescope already."*
-
-> *"Love the AI feedback — lets me know where to improve!"*
-
-> *"I enjoy the idea behind autograder comments that can help students verify what's wrong."*
 
 ---
 
@@ -184,49 +123,6 @@ When a student repeats the same error type across submissions:
 - OpenAI API key
 - Canvas API token
 - Canvas LTI external tool credentials
-
-### Setup
-```bash
-git clone https://github.com/nujellaharshini/Automatic-Feedback-Generation---Research.git
-cd Automatic-Feedback-Generation---Research
-
-pip install -r requirements.txt
-
-cp .env.example .env
-# Fill in: OPENAI_API_KEY, CANVAS_API_TOKEN, BASE_URL, COURSE_ID, ASSIGNMENT_ID,
-#          LTI13_CLIENT_ID, LTI13_ISSUER, LTI13_AUTH_LOGIN_URL, LTI13_DEPLOYMENT_ID,
-#          SECRET_KEY
-```
-
-### Generate LTI Keys
-```bash
-openssl genrsa -out website/private.key 2048
-openssl rsa -in website/private.key -pubout -out website/public.key
-```
-
-### Run the Web App
-```bash
-cd website
-python server.py
-# App runs at http://localhost:5000
-```
-
-### Run the Pipeline Manually
-```bash
-# Grade all submissions
-./local_autograder/grade_all.sh
-
-# Generate AI feedback
-python generate_feedback.py
-
-# Post feedback to Canvas (dry-run)
-DRY_RUN=1 python canvas_connection.py
-
-# Publish to students
-DRY_RUN=0 python canvas_connection.py
-```
-
----
 
 ## 📁 Project Structure
 ```
@@ -254,25 +150,6 @@ DRY_RUN=0 python canvas_connection.py
 ---
 
 ## 🔭 Future Work
-
-- [ ] Real-time feedback triggered automatically on each submission
-- [ ] Email/notification alerts when feedback is posted
-- [ ] Expand error bank with more categories
-- [ ] Reduce LLM hallucinations when student code is included as context
-- [ ] Deploy across multiple courses and institutions
+Still work in-progress, will be deploying in a Intro Python course.
 
 ---
-
-## 📄 Publication
-
-Submitted to the **ASEE (American Society for Engineering Education) Annual Conference**.
-
-> *"Beyond Pass or Fail: Integrating AI-based Directed Feedback in Canvas to Augment Static Autograder Unit Tests"*
-
----
-
-## 👩‍💻 Author
-
-**Harshini Nujella**
-University of California, Merced
-[GitHub](https://github.com/nujellaharshini)
