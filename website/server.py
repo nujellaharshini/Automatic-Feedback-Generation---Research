@@ -223,7 +223,9 @@ def test_login2():
 #-----------------------
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    response = send_from_directory('static', filename)
+    response = send_from_directory(
+        os.path.join(BASE_DIR, 'static'), filename
+    )
     response.headers['ngrok-skip-browser-warning'] = 'true'
     return response
 
@@ -421,10 +423,13 @@ def submit():
         student_db_id        = session.get('student_db_id')
         assignment_db_id     = session.get('assignment_db_id')
         student_folder       = session.get('student_folder')
+        lineitems_url        = session.get('ags_lineitems_url')
+        lti_version          = session.get('lti_version')
 
         print(f"SUBMIT DEBUG - course_id: {course_id}")
         print(f"SUBMIT DEBUG - assignment_id: {assignment_id}")
         print(f"SUBMIT DEBUG - canvas_user_id: {canvas_user_id}")
+        print(f"SUBMIT DEBUG - lti_version: {lti_version}")
         
         if not student_name or not course_id or not canvas_user_id:
             return jsonify({'success': False, 'error': 'Missing Canvas info — please access through Canvas.'})
@@ -432,37 +437,68 @@ def submit():
         if not student_folder:
             return jsonify({'success': False, 'error': 'No submission found — please upload a file first.'})
 
-        # Find the uploaded file in the student's folder
-        student_folder_path = os.path.join(UPLOAD_DIR, student_folder)
-        files = [f for f in os.listdir(student_folder_path) if os.path.isfile(os.path.join(student_folder_path, f))]
-
-        if not files:
-            return jsonify({'success': False, 'error': 'No file found in submission folder.'})
-
-        filename  = files[0]  # take the first (and should be only) file
-        file_path = os.path.join(student_folder_path, filename)
-
-        # Submit file to Canvas
-        submit_file_to_canvas(course_id, assignment_id, canvas_user_id, file_path, filename, student_name=student_name)
-
-        # Also post feedback as a comment if available
+        # Load test results from DB
         conn = get_db()
         c = conn.cursor()
+        c.execute('''
+            SELECT test_name, status, score, max_score
+            FROM results
+            WHERE student_id=? AND assignment_id=?
+            ORDER BY graded_at DESC
+        ''', (student_db_id, assignment_db_id))
+        rows = c.fetchall()
+
+        # Get feedback
         c.execute('''
             SELECT feedback_text FROM feedback
             WHERE student_id=? AND assignment_id=?
             ORDER BY generated_at DESC LIMIT 1
         ''', (student_db_id, assignment_db_id))
-        row = c.fetchone()
+        feedback_row = c.fetchone()
         conn.close()
 
-        if row and row['feedback_text']:
-            post_feedback_comment(course_id, assignment_id, canvas_user_id, row['feedback_text'])
+        if not rows:
+            return jsonify({'success': False, 'error': 'No grading results found — please grade first.'})
+
+        tests = [{'name': r['test_name'], 'status': r['status'],
+                  'score': r['score'], 'max_score': r['max_score']} for r in rows]
+
+        # ── LTI 1.3 — Submit scores via AGS ──
+        if lti_version == '1.3' and lineitems_url:
+            canvas_token = os.environ.get('CANVAS_API_KEY', '')
+            from canvas_connection import submit_scores_via_ags
+            submit_scores_via_ags(lineitems_url, tests, canvas_user_id, canvas_token)
+
+        # ── LTI 1.1 fallback — submit file ──
+        else:
+            student_folder_path = os.path.join(UPLOAD_DIR, student_folder)
+            files = [f for f in os.listdir(student_folder_path)
+                     if os.path.isfile(os.path.join(student_folder_path, f))]
+
+            if not files:
+                return jsonify({'success': False, 'error': 'No file found in submission folder.'})
+
+            filename  = files[0]
+            file_path = os.path.join(student_folder_path, filename)
+            from canvas_connection import submit_file_to_canvas
+            submit_file_to_canvas(
+                course_id, assignment_id, canvas_user_id,
+                file_path, filename, student_name=student_name
+            )
+
+        # ── Post feedback as comment ──
+        if feedback_row and feedback_row['feedback_text']:
+            from canvas_connection import post_feedback_comment, get_canvas_user_id_by_name
+            numeric_user_id = get_canvas_user_id_by_name(course_id, student_name)
+            if numeric_user_id:
+                post_feedback_comment(
+                    course_id, assignment_id,
+                    numeric_user_id, feedback_row['feedback_text']
+                )
 
         return jsonify({
             'success': True,
-            'dry_run': DRY_RUN,
-            'message': 'Dry run — nothing posted.' if DRY_RUN else f'"{filename}" submitted to Canvas successfully!'
+            'message': f'Scores submitted to Canvas! {len(tests)} tests graded.'
         })
 
     except Exception as e:
