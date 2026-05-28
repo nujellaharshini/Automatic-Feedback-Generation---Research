@@ -2,6 +2,8 @@ import os, sys, time, json, requests
 from pathlib import Path
 from typing import List, Optional, Dict
 from dotenv import load_dotenv
+from datetime import datetime, timezone
+
 
 load_dotenv()
 BASE_URL = os.getenv("CANVAS_BASE_URL", "https://catcourses.ucmerced.edu").rstrip("/")
@@ -215,6 +217,84 @@ def submit_file_to_canvas(course_id, assignment_id, lti_user_id, file_path, file
     print(f"Submitted {filename} for user {canvas_user_id} to assignment {assignment_id}")
     return r4.json()
 
+def submit_scores_via_ags(lineitems_url, tests, canvas_user_id, access_token):
+    """
+    Submit scores to Canvas via AGS.
+    Creates line items if they don't exist, then posts scores.
+    """
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type':  'application/json'
+    }
+
+    for test in tests:
+        # Clean up test name — remove class name in parentheses
+        label = test['name'].split('(')[0].strip()
+
+        # Step 1 — Check if line item already exists
+        r = requests.get(lineitems_url, headers=headers, timeout=30)
+        if r.status_code >= 400:
+            print(f"Could not fetch line items: {r.status_code}")
+            continue
+
+        existing_items = r.json() if isinstance(r.json(), list) else []
+        line_item_url  = None
+
+        for item in existing_items:
+            if item.get('label', '').strip().lower() == label.lower():
+                line_item_url = item.get('id')
+                print(f"Found existing line item: {label}")
+                break
+
+        # Create it if it doesn't exist
+        if not line_item_url:
+            create_headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type':  'application/vnd.ims.lis.v2.lineitem+json'
+            }
+            line_item_data = {
+                'scoreMaximum': test['max_score'],
+                'label':        label,
+                'tag':          'autograder'
+            }
+            r2 = requests.post(
+                lineitems_url,
+                headers=create_headers,
+                json=line_item_data,
+                timeout=30
+            )
+            if r2.status_code >= 400:
+                print(f"Could not create line item '{label}': {r2.status_code} — {r2.text[:100]}")
+                continue
+
+            line_item_url = r2.json().get('id')
+            print(f"Created line item: {label}")
+
+        # Step 2 — Submit score for this student
+        score_url = f"{line_item_url}/scores"
+        score_headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type':  'application/vnd.ims.lis.v1.score+json'
+        }
+        score_data = {
+            'userId':           str(canvas_user_id),
+            'scoreGiven':       test['score'],
+            'scoreMaximum':     test['max_score'],
+            'activityProgress': 'Completed',
+            'gradingProgress':  'FullyGraded',
+            'timestamp':        datetime.now(timezone.utc).isoformat()
+        }
+        r3 = requests.post(
+            score_url,
+            headers=score_headers,
+            json=score_data,
+            timeout=30
+        )
+        if r3.status_code >= 400:
+            print(f"Could not submit score for '{label}': {r3.status_code} — {r3.text[:100]}")
+        else:
+            print(f"Score submitted for '{label}': {test['score']}/{test['max_score']}")
+            
 def post_feedback_comment(course_id, assignment_id, user_id, feedback_text):
     """Post feedback as a submission comment"""
     if DRY_RUN:

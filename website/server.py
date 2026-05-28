@@ -1,28 +1,25 @@
-from flask import Flask, request, jsonify, render_template, session, send_from_directory
-
+from flask import Flask, make_response, request, jsonify, render_template, session, send_from_directory
 import os
 import json
 import sqlite3
 import subprocess
 import secrets
 from dotenv import load_dotenv
+from openai import OpenAI
+
 
 load_dotenv()
-print("SERVER.PY LOADED ✅")
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'autograder-fixed-secret-2024')
 
-#-----------------------
-# PATHS
-#-----------------------
-BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTOGRADER_DIR = os.path.dirname(BASE_DIR)
-LOCAL_AG_DIR   = os.path.join(AUTOGRADER_DIR, 'local_autograder')
-RESULTS_PATH   = os.path.join(LOCAL_AG_DIR, 'results_all.json')
+LOCAL_AG_DIR = os.path.join(AUTOGRADER_DIR, 'local_autograder')
+RESULTS_PATH = os.path.join(LOCAL_AG_DIR, 'results_all.json')
 FEEDBACK_PATH  = os.path.join(AUTOGRADER_DIR, 'feedback.json')
-RUN_ALL_PATH   = os.path.join(AUTOGRADER_DIR, 'run_all.sh')
-UPLOAD_DIR     = os.path.join(BASE_DIR, 'Submissions')
-DB_PATH        = os.path.join(BASE_DIR, 'website.db')
+RUN_ALL_PATH = os.path.join(AUTOGRADER_DIR, 'run_all.sh')
+UPLOAD_DIR = os.path.join(BASE_DIR, 'Submissions')
+DB_PATH = os.path.join(BASE_DIR, 'website.db')
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_EXTENSIONS = {'py', 'pdf'}
@@ -31,9 +28,6 @@ import sys
 sys.path.insert(0, AUTOGRADER_DIR)
 from canvas_connection import submit_file_to_canvas, post_feedback_comment, DRY_RUN
 
-#-----------------------
-# DATABASE SETUP
-#-----------------------
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
@@ -124,10 +118,6 @@ def init_db():
     conn.close()
 
 init_db()
-
-#------------------------
-# HELPERS
-#------------------------
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -155,15 +145,57 @@ def save_feedback_to_db(student_id, assignment_id, feedback_text):
     conn.commit()
     conn.close()
 
-#-----------------------
+def generate_test_labels(tests):
+    try:        
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY', ''))
+
+        test_names = [t['name'] for t in tests]
+        names_block = '\n'.join(f"- {name}" for name in test_names)
+        
+        prompt = f"""Convert these autograder test function names into short, human-readable labels for students.
+
+Rules:
+- Maximum 5 words per label
+- Use plain English, no underscores
+- Include a case number if there are multiple tests of the same type
+- Format: "Case N — Description" (e.g. "Case 1 — Multimeter range")
+- Return ONLY a JSON object mapping original name to label, nothing else
+
+Test names:
+{names_block}
+
+Return format:
+{{"original_name": "Human readable label", ...}}"""
+
+        resp = client.responses.create(
+            model="gpt-5-mini",
+            input=[{"role": "user", "content": prompt}]
+        )
+        
+        text = resp.output_text.strip()
+        # Strip markdown code blocks if present
+        if text.startswith('```'):
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+        
+        labels = json.loads(text.strip())
+        return labels
+        
+    except Exception as e:
+        print(f"Label generation failed: {e}")
+        # Fallback — clean up names manually
+        labels = {}
+        for t in tests:
+            key = t['name'].split('(')[0].strip()
+            readable = key.replace('test_', '').replace('_', ' ').title()
+            labels[t['name']] = readable
+        return labels
 # REGISTER LTI BLUEPRINT
-#-----------------------
 from lti_routes import lti_bp
 app.register_blueprint(lti_bp)
 
-#-----------------------
 # TEST LOGIN ROUTES (remove before production)
-#-----------------------
 @app.route('/test-login1')
 def test_login1():
     conn = get_db()
@@ -207,15 +239,15 @@ def test_login2():
     conn.close()
 
     student_name = 'Steve Jobs'
-    session['student_name']         = student_name
-    session['student_folder']       = student_name.replace(' ', '_')
-    session['assignment_name']      = 'Lab 07'
-    session['student_db_id']        = student_id
-    session['assignment_db_id']     = assignment_id
-    session['canvas_course_id']     = os.environ.get('COURSE_ID', 'course_123')
+    session['student_name'] = student_name
+    session['student_folder'] = student_name.replace(' ', '_')
+    session['assignment_name'] = 'Lab 07'
+    session['student_db_id'] = student_id
+    session['assignment_db_id'] = assignment_id
+    session['canvas_course_id'] = os.environ.get('COURSE_ID', 'course_123')
     session['canvas_assignment_id'] = os.environ.get('ASSIGNMENT_ID', 'assignment_456')
-    session['canvas_user_id']       = 'student_002'
-    session['lti_version']          = 'test'
+    session['canvas_user_id'] = 'student_002'
+    session['lti_version'] = 'test'
     return render_template('homepage.html')
 
 #-----------------------
@@ -223,14 +255,14 @@ def test_login2():
 #-----------------------
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    response = send_from_directory(
-        os.path.join(BASE_DIR, 'static'), filename
-    )
+    response = send_from_directory(os.path.join(BASE_DIR, 'static'), filename)
     response.headers['ngrok-skip-browser-warning'] = 'true'
     return response
 
 @app.route('/')
 def index():
+    response = make_response(render_template('homepage.html'))
+    response.set_cookie('ngrok-skip-browser-warning', 'true', samesite='None', secure=True)
     return render_template('homepage.html')
 
 @app.after_request
@@ -256,10 +288,10 @@ def upload():
         return jsonify({'success': False, 'error': 'Only .py and .pdf files are allowed'}), 400
     
     # LTI info: 
-    student_db_id    = session.get('student_db_id')
+    student_db_id = session.get('student_db_id')
     assignment_db_id = session.get('assignment_db_id')
-    student_name     = session.get('student_name')
-    folder_name      = session.get('student_folder', student_name.replace(' ', '_'))
+    student_name = session.get('student_name')
+    folder_name = session.get('student_folder', student_name.replace(' ', '_'))
     
     print(f"UPLOAD DEBUG - student_db_id: {student_db_id}")
     print(f"UPLOAD DEBUG - assignment_db_id: {assignment_db_id}")
@@ -295,6 +327,7 @@ def upload():
     conn.close()
 
     return jsonify({'success': True})
+
 
 @app.route('/grade', methods=['POST'])
 def grade():
@@ -333,7 +366,7 @@ def grade():
 
         tests = []
         if isinstance(data, dict):
-            student_data = data.get(student_folder, {})  # ← only this student's data
+            student_data = data.get(student_folder, {}) 
             if isinstance(student_data, dict):
                 test_list = student_data.get('tests', [])
                 if not isinstance(student_data, dict):
@@ -346,7 +379,7 @@ def grade():
                         'score': t.get('score', 0),
                         'max_score': t.get('max_score', 0)
                     })
-
+        test_labels = generate_test_labels(tests)
         total_score = sum(t['score'] for t in tests)
         total_possible = sum(t['max_score'] for t in tests)
         total  = len(tests)
@@ -376,9 +409,8 @@ def grade():
                 for entry in feedback_data:
                     if isinstance(entry, dict):
                         fb = entry.get('feedback', '')
-                        name = entry.get('full_name', '')
                         if fb:
-                            parts.append(f"{name}: {fb}" if name else fb)
+                            parts.append(f"{fb}")
                     elif isinstance(entry, str):
                         parts.append(entry)
                 feedback_text = '\n\n'.join(parts)
@@ -400,6 +432,7 @@ def grade():
         return jsonify({
             'success': True,
             'tests': tests,
+            'test_labels': test_labels,
             'total': total,
             'passed': passed,
             'failed': failed,
@@ -416,15 +449,15 @@ def grade():
 @app.route('/submit', methods=['POST'])
 def submit():
     try:
-        student_name         = session.get('student_name')
-        course_id            = session.get('canvas_course_id')
-        assignment_id        = session.get('canvas_assignment_id')
-        canvas_user_id       = session.get('canvas_user_id')
-        student_db_id        = session.get('student_db_id')
-        assignment_db_id     = session.get('assignment_db_id')
-        student_folder       = session.get('student_folder')
-        lineitems_url        = session.get('ags_lineitems_url')
-        lti_version          = session.get('lti_version')
+        student_name = session.get('student_name')
+        course_id = session.get('canvas_course_id')
+        assignment_id = session.get('canvas_assignment_id')
+        canvas_user_id = session.get('canvas_user_id')
+        student_db_id = session.get('student_db_id')
+        assignment_db_id = session.get('assignment_db_id')
+        student_folder = session.get('student_folder')
+        lineitems_url = session.get('ags_lineitems_url')
+        lti_version = session.get('lti_version')
 
         print(f"SUBMIT DEBUG - course_id: {course_id}")
         print(f"SUBMIT DEBUG - assignment_id: {assignment_id}")
@@ -463,13 +496,13 @@ def submit():
         tests = [{'name': r['test_name'], 'status': r['status'],
                   'score': r['score'], 'max_score': r['max_score']} for r in rows]
 
-        # ── LTI 1.3 — Submit scores via AGS ──
+        # LTI 1.3 — Submit scores via AGS
         if lti_version == '1.3' and lineitems_url:
             canvas_token = os.environ.get('CANVAS_API_KEY', '')
             from canvas_connection import submit_scores_via_ags
             submit_scores_via_ags(lineitems_url, tests, canvas_user_id, canvas_token)
 
-        # ── LTI 1.1 fallback — submit file ──
+        # LTI 1.1 fallback — submit file
         else:
             student_folder_path = os.path.join(UPLOAD_DIR, student_folder)
             files = [f for f in os.listdir(student_folder_path)
@@ -486,7 +519,7 @@ def submit():
                 file_path, filename, student_name=student_name
             )
 
-        # ── Post feedback as comment ──
+        # Post feedback as comment
         if feedback_row and feedback_row['feedback_text']:
             from canvas_connection import post_feedback_comment, get_canvas_user_id_by_name
             numeric_user_id = get_canvas_user_id_by_name(course_id, student_name)

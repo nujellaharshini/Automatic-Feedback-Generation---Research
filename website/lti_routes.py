@@ -176,7 +176,9 @@ def lti11_launch():
             assignment_name, course_id, assignment_id
         )
 
-        return render_template('homepage.html')
+        # return render_template('homepage.html')
+        # Redirect to homepage with ngrok bypass
+        return redirect('/?ngrok-skip-browser-warning=true')  # ← change this
 
     except Exception as e:
         print(f"LTI 1.1 launch error: {e}")

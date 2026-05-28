@@ -50,10 +50,9 @@ def fetch_grouped_outputs(conn: sqlite3.Connection) -> Dict[str, List[str]]:
 def find_submission_dir(root: Path, submission_id: str) -> Optional[Path]:
     """
     Try to locate the directory for a given submission_id.
-    We try both 'submission_123' and '123' just in case.
     """
     candidates = [
-        root / submission_id,                                   # 'submission_342630991'
+        root / submission_id,                                  
         root / submission_id.replace("submission_", ""),        
     ]
     for p in candidates:

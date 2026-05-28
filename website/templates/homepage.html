@@ -26,7 +26,7 @@
   <div class="file-list" id="file-list"></div>
 
   <!-- Grade Button -->
-  <button id="grade-btn" onclick="runGrader()">⚙ Grade Assignment</button>
+  <button id="grade-btn" onclick="runGrader()">Grade Assignment</button>
   <div id="grade-status"></div>
 
   <!-- Results Section (hidden until graded) -->
@@ -45,13 +45,26 @@
       </div>
     </div>
 
+    <!-- Visible Tests -->
+    <h3 style="margin-top: 24px; margin-bottom: 8px;">Visible Test Cases</h3>
     <div class="grid-container">
       <div class="grid-header">
-        <span>Test Name</span>
+        <span>Test</span>
         <span>Status</span>
         <span>Output</span>
       </div>
-      <div id="grid-body"></div>
+      <div id="grid-body-visible"></div>
+    </div>
+
+    <!-- Hidden Tests -->
+    <h3 style="margin-top: 24px; margin-bottom: 8px;">Hidden Test Cases</h3>
+    <div class="grid-container">
+      <div class="grid-header">
+        <span>Test</span>
+        <span>Status</span>
+        <span></span>
+      </div>
+      <div id="grid-body-hidden"></div>
     </div>
 
     <!-- Feedback Section -->
@@ -110,14 +123,13 @@
       formData.append('reupload', reupload ? 'true' : 'false');
       formData.append('original_name', reupload ? fileInput._originalName : '');
 
-
       try {
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
         addFileItem(file.name, file.size, data.success, data.error, reupload);
         status.className = data.success ? '' : 'error';
         status.textContent = data.success
-          ? reupload ? `"${file.name}"replaced successfully` : `Saved`
+          ? reupload ? `"${file.name}" replaced successfully` : `Saved`
           : `${data.error}`;
       } catch {
         addFileItem(file.name, file.size, false, null, reupload);
@@ -128,12 +140,10 @@
   }
 
   function addFileItem(name, size, success, error = null, reupload = false) {
-    // If re-uploading, remove the old entry for this file if it exists
     if (reupload) {
       const existing = document.querySelector(`.file-item[data-name="${name}"]`);
       if (existing) existing.remove();
     }
-
     const item = document.createElement('div');
     item.className = 'file-item';
     item.dataset.name = name;
@@ -147,110 +157,165 @@
   }
 
   function triggerReupload(originalName) {
-  fileInput._reupload = true;
-  fileInput._originalName = originalName;
-  fileInput.click();
-}
-
-async function runGrader() {
-  const btn = document.getElementById('grade-btn');
-  const gradeStatus = document.getElementById('grade-status');
-  const resultsSection = document.getElementById('results-section');
-
-  btn.disabled = true;
-  btn.textContent = 'Grading...';
-  gradeStatus.className = '';
-  gradeStatus.textContent = 'Running autograder, please wait...';
-
-  try {
-    const res = await fetch('/grade', { method: 'POST' });
-    const data = await res.json();
-
-    if (!data.success) {
-      gradeStatus.className = 'error';
-      gradeStatus.textContent = '✗ Grading failed: ' + data.error;
-      btn.disabled = false;
-      btn.textContent = '⚙ Grade Assignment';
-      return;
-    }
-
-    // Fill summary
-    document.getElementById('r-total').textContent  = data.total;
-    document.getElementById('r-passed').textContent = data.passed;
-    document.getElementById('r-failed').textContent = data.failed;
-
-    document.getElementById('r-score').textContent = `${data.total_score} / ${data.total_possible}`;
-
-    // Fill grid
-    const gridBody = document.getElementById('grid-body');
-    gridBody.innerHTML = '';
-    data.tests.forEach(test => {
-      const row = document.createElement('div');
-      row.className = `grid-row ${test.status}`;
-      row.innerHTML = `
-        <span class="test-name">${test.name}</span>
-        <span class="test-status ${test.status}">${test.status}</span>
-        <span class="test-output">${test.output || '—'}</span>
-      `;
-      gridBody.appendChild(row);
-    });
-
-    // Show feedback
-    if (data.feedback) {
-      document.getElementById('feedback-text').textContent = data.feedback;
-      document.getElementById('feedback-section').style.display = 'block';
-    }
-
-    resultsSection.style.display = 'block';
-    gradeStatus.textContent = 'Grading complete!';
-    btn.textContent = 'Re-grade Assignment';
-    document.getElementById('submit-section').style.display = 'block';
-    btn.disabled = false;
-
-  } catch {
-    gradeStatus.className = 'error';
-    gradeStatus.textContent = 'Could not reach server.';
-    btn.disabled = false;
-    btn.textContent = 'Grade Assignment';
+    fileInput._reupload = true;
+    fileInput._originalName = originalName;
+    fileInput.click();
   }
-}
 
-async function submitAssignment() {
-  const btn = document.getElementById('submit-btn');
-  const submitStatus = document.getElementById('submit-status');
+  // ── Label + output helpers (defined once, outside runGrader) ──
+  let TEST_LABELS = {};
 
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
-  submitStatus.style.color = '';
-  submitStatus.textContent = '';
+  function getLabel(fullName) {
+    return TEST_LABELS[fullName] ||
+           TEST_LABELS[fullName.split('(')[0].trim()] ||
+           fullName.split('(')[0].trim().replace('test_', '').replace(/_/g, ' ');
+  }
 
-  try {
-    const res = await fetch('/submit', { method: 'POST' });
-    const data = await res.json();
+  function formatOutput(raw, testStatus) {
+    if (!raw || raw.trim() === '' || raw === '—') {
+      return testStatus === 'passed' ? '—' : 'Hidden test';
+    }
+    const mismatch = raw.match(/Test Failed:\s*(.+?)\s*!=\s*(.+)/);
+    if (mismatch) {
+      return `Your output: ${mismatch[1].trim()} — Expected: ${mismatch[2].trim()}`;
+    }
+    const strFail = raw.match(/Test Failed:\s*(.+)/);
+    if (strFail) {
+      return `Unexpected result: ${strFail[1].trim()}`;
+    }
+    return raw;
+  }
 
-    if (!data.success) {
+  function isHiddenTest(output, testStatus) {
+    if (!output || output.trim() === '' || output === '—') return true;
+    if (testStatus === 'passed' && output.length > 5) return false;
+    return false;
+  }
+
+  async function runGrader() {
+    const btn = document.getElementById('grade-btn');
+    const gradeStatus = document.getElementById('grade-status');
+    const resultsSection = document.getElementById('results-section');
+
+    btn.disabled = true;
+    btn.textContent = 'Grading...';
+    gradeStatus.className = '';
+    gradeStatus.textContent = 'Running autograder, please wait...';
+
+    try {
+      const res = await fetch('/grade', { method: 'POST' });
+      const data = await res.json();
+
+      if (!data.success) {
+        gradeStatus.className = 'error';
+        gradeStatus.textContent = '✗ Grading failed: ' + data.error;
+        btn.disabled = false;
+        btn.textContent = 'Grade Assignment';
+        return;
+      }
+
+      if (data.test_labels) {
+        TEST_LABELS = data.test_labels;
+      }
+      data.tests.sort((a, b) => {
+      const labelA = getLabel(a.name).toLowerCase();
+      const labelB = getLabel(b.name).toLowerCase();
+      // Sort by topic first (everything after "Case N — "), then by case number
+      const topicA = labelA.replace(/^case \d+ — /, '');
+      const topicB = labelB.replace(/^case \d+ — /, '');
+      if (topicA !== topicB) return topicA.localeCompare(topicB);
+        return labelA.localeCompare(labelB);
+      });
+
+      document.getElementById('r-total').textContent  = data.total;
+      document.getElementById('r-passed').textContent = data.passed;
+      document.getElementById('r-failed').textContent = data.failed;
+      document.getElementById('r-score').textContent  = `${data.total_score} / ${data.total_possible}`;
+
+      const visibleBody = document.getElementById('grid-body-visible');
+      const hiddenBody  = document.getElementById('grid-body-hidden');
+      visibleBody.innerHTML = '';
+      hiddenBody.innerHTML  = '';
+
+      data.tests.forEach(test => {
+        const label  = getLabel(test.name);
+        const output = formatOutput(test.output, test.status);
+        const hidden = isHiddenTest(test.output, test.status);
+
+        const row = document.createElement('div');
+        row.className = `grid-row ${test.status}`;
+
+        if (hidden) {
+          row.innerHTML = `
+            <span class="test-name">${label}</span>
+            <span class="test-status ${test.status}">${test.status}</span>
+            <span class="test-output" style="font-style:italic;opacity:0.6;">Hidden</span>
+          `;
+          hiddenBody.appendChild(row);
+        } else {
+          row.innerHTML = `
+            <span class="test-name">${label}</span>
+            <span class="test-status ${test.status}">${test.status}</span>
+            <span class="test-output">${output}</span>
+          `;
+          visibleBody.appendChild(row);
+        }
+      });
+
+      if (data.feedback) {
+        document.getElementById('feedback-text').textContent = data.feedback;
+        document.getElementById('feedback-section').style.display = 'block';
+      }
+
+      resultsSection.style.display = 'block';
+      gradeStatus.textContent = 'Grading complete!';
+      btn.textContent = 'Re-grade Assignment';
+      document.getElementById('submit-section').style.display = 'block';
+      btn.disabled = false;
+
+    } catch {
+      gradeStatus.className = 'error';
+      gradeStatus.textContent = 'Could not reach server.';
+      btn.disabled = false;
+      btn.textContent = 'Grade Assignment';
+    }
+  }
+
+  async function submitAssignment() {
+    const btn = document.getElementById('submit-btn');
+    const submitStatus = document.getElementById('submit-status');
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+    submitStatus.style.color = '';
+    submitStatus.textContent = '';
+
+    try {
+      const res = await fetch('/submit', { method: 'POST' });
+      const data = await res.json();
+
+      if (!data.success) {
+        submitStatus.style.color = '#a17f40';
+        submitStatus.textContent = 'Error: ' + data.error;
+        btn.disabled = false;
+        btn.textContent = 'Submit Assignment';
+        return;
+      }
+
       submitStatus.style.color = '#a17f40';
-      submitStatus.textContent = 'Error: ' + data.error;
+      submitStatus.textContent = data.dry_run
+        ? 'Not submitted to Canvas yet.'
+        : '✓ ' + data.message;
+      btn.textContent = 'Submitted';
+
+    } catch {
+      submitStatus.style.color = '#a17f40';
+      submitStatus.textContent = 'Could not reach server.';
       btn.disabled = false;
       btn.textContent = 'Submit Assignment';
-      return;
     }
-
-    submitStatus.style.color = '#a17f40';
-    submitStatus.textContent = data.dry_run
-      ? 'Not submitted to Canvas yet.'
-      : '✓ ' + data.message;
-    btn.textContent = 'Submitted';
-    // Keep button disabled after successful submission so student can't double submit
-
-  } catch {
-    submitStatus.style.color = '#a17f40';
-    submitStatus.textContent = 'Could not reach server.';
-    btn.disabled = false;
-    btn.textContent = 'Submit Assignment';
   }
-}
 
-</script>
+  </script>
 </body>
 </html>

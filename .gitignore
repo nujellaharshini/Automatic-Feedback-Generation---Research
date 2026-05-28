@@ -11,6 +11,7 @@ local_autograder/submissions/
 local_autograder/results/
 Extra_files/
 website/submissions/
+
 # Ignore file types
 *.pdf 
 *.sqlite
