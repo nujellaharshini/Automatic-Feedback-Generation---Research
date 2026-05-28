@@ -2,14 +2,14 @@
   ".DS_Store": {
     "error": "no results.json"
   },
-  "Ayush_Pandey": {
+  "Harshini_Nujella": {
     "tests": [
       {
         "name": "test_color_code_resistance_four (test.Lab07AutoGrader)",
         "score": 0.0,
         "max_score": 5,
         "status": "failed",
-        "output": "Test Failed: 840 != 14000000\n",
+        "output": "Test Failed: 'brown'\n",
         "visibility": "hidden"
       },
       {
@@ -17,7 +17,7 @@
         "score": 0.0,
         "max_score": 5,
         "status": "failed",
-        "output": "Test Failed: 200 != 1000\n",
+        "output": "Test Failed: 'brown'\n",
         "visibility": "hidden"
       },
       {
@@ -25,7 +25,7 @@
         "score": 0.0,
         "max_score": 5,
         "status": "failed",
-        "output": "Test Failed: 620 != 3100\n",
+        "output": "Test Failed: 'orange'\n",
         "visibility": "hidden"
       },
       {
@@ -33,7 +33,7 @@
         "score": 0.0,
         "max_score": 5,
         "status": "failed",
-        "output": "Test Failed: 400 != 2000\n",
+        "output": "Test Failed: 'red'\n",
         "visibility": "hidden"
       },
       {

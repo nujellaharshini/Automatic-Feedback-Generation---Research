@@ -117,10 +117,10 @@ check_error "json_to_sqlite.py" $?
 # STEP 9: Run generate_feedback.py
 # #------------------------
 cd "$SCRIPT_DIR"
-echo "Running generate_feedback_1.py..."
+echo "Running generate_feedback_2.py..."
 
-python3 generate_feedback_1.py
-check_error "generate_feedback_1.py" $?
+python3 generate_feedback_2.py
+check_error "generate_feedback_2.py" $?
 
 # #------------------------
 # STEP 10: Run canvas_connection.py

@@ -1,102 +1,248 @@
 {
-  "TYPE_NONE": {
-    "category": "Types / None handling",
+  "MISSING_RETURN": {
+    "category": "Missing return value",
     "regex": [
-      "'NoneType' object is not",
-      "unsupported operand type\\(s\\).*'NoneType'",
-      "TypeError:.*NoneType",
-      "len\\(None\\)",
-      "(?i)(compare|comparing)\\s+None",
-      "(?i)None\\s*(\\+|\\*|/|//|-)\\s*\\d",
-      "(?i)\\d\\s*(\\+|\\*|/|//|-)\\s*None",
-      "(?i)len\\s*\\(\\s*None\\s*\\)"
+      "Test Failed: None$",
+      "Test Failed: None\n",
+      "None is not an instance of.*float",
+      "None is not an instance of.*int",
+      "compute_power must return a float",
+      "compute_energy must return a float",
+      "unexpectedly None",
+      "did not return",
+      "returns None",
+      "must return float",
+      "must return int"
     ]
   },
-  "FLOAT_ON_NONE": {
-    "category": "Types / None handling",
+  "WRONG_FORMULA": {
+    "category": "Wrong numeric output or formula",
     "regex": [
-      "float\\(\\) argument must be a string or a real number, not 'NoneType'",
-      "TypeError: float\\(\\).*NoneType",
-      "(?i)float\\(\\).*None",
-      "(?i)None.*float\\("
+      "\\d+\\.?\\d*\\s*!=\\s*\\d+\\.?\\d*.*within.*places",
+      "expected power to be.*W",
+      "expected.*\\d+\\.?\\d*.*got.*\\d+\\.?\\d*",
+      "5\\.0 != 10\\.0",
+      "15\\.0 != 10\\.0",
+      "wrong.*formula",
+      "incorrect.*calculation"
     ]
   },
-  "OUTPUT_MISMATCH": {
-    "category": "Output format",
+  "NONE_ARITHMETIC": {
+    "category": "NoneType arithmetic error",
     "regex": [
-      "Did not find",
-      "Output mismatch",
-      "expected\\s+.*\\s+but\\s+got",
-      "does not match expected output"
+      "unsupported operand type.*NoneType.*float",
+      "unsupported operand type.*float.*NoneType",
+      "unsupported operand type.*NoneType.*int",
+      "unsupported operand type.*for \\*.*NoneType",
+      "unsupported operand type.*for -.*NoneType",
+      "float\\(\\) argument must be.*NoneType",
+      "'>'.*not supported.*NoneType.*int",
+      "NoneType.*and.*float",
+      "TypeError.*NoneType"
     ]
   },
-  "MATH_OPS_INCORRECT": {
-    "category": "Math syntax / operations",
+  "WRONG_RESISTOR_DECODE": {
+    "category": "Wrong resistor color code or multiplier",
     "regex": [
-      "(\\w|\\d)\\s*\\^\\s*(\\w|\\d)",            
-      "(?i)used\\s*\\^\\s*for\\s*exponent",        
-      "ZeroDivisionError",                        
-      "(?i)division\\s+by\\s+zero",
-      "(?i)math\\s+domain\\s+error",              
-      "OverflowError: (math|numerical) range error",
-      "TypeError:\\s*unsupported operand type\\(s\\) for (\\+|\\-|\\*|/|//|%|\\*\\*):",
-      "(?i)use\\s+//\\s+for\\s+integer\\s+division",
-      "(?i)use\\s+/\\s+for\\s+float\\s+division"
+      "expected resistance is \\d+, but the code output was",
+      "False is not true.*expected resistance",
+      "For the inputs:.*expected resistance",
+      "\\d+\\s*!=\\s*\\d{4,}",
+      "\\d{4,}\\s*!=\\s*\\d+",
+      "resistance.*wrong",
+      "multiplier.*incorrect"
     ]
   },
-  "LOOP_NEVER_UPDATES": {
-    "category": "Loops",
+  "INFINITE_LOOP": {
+    "category": "Infinite loop or extra input requests",
     "regex": [
-      "TimeLimitExceeded",
+      "requested more inputs than expected",
+      "hint: check your loop/exit logic",
+      "too many inputs",
+      "EOFError",
+      "EOF when reading a line",
+      "Program requested more inputs than expected",
       "timed out",
-      "infinite loop",
-      "tests? exceeded time limit"
+      "TimeoutError"
     ]
   },
-  "LOOP_BAD_RANGE": {
-    "category": "Loops",
+  "MISSING_OUTPUT_HEADING": {
+    "category": "Missing required task headings or output lines",
     "regex": [
-      "off[- ]by[- ]one",
-      "range.*expected",
-      "expected.*(\\d+).*(got|was).*\\d+.*(items|length)"
+      "Missing Task \\d+ echo line",
+      "Missing Task \\d+ header line",
+      "Missing Task \\d+ section heading",
+      "not found in ''",
+      "Task \\d+.*not found",
+      "unexpectedly None.*Missing Task",
+      "missing.*required.*heading"
     ]
   },
-  "FUNC_ARGS_ORDER": {
-    "category": "Functions",
+  "PROMPT_WORDING_MISMATCH": {
+    "category": "Prompt wording or structure mismatch",
     "regex": [
-      "missing 1 required positional argument",
-      "takes.*positional arguments but.*were given",
-      "TypeError: .*\\(\\) missing required positional argument"
+      "First-band prompt/choices not found as specified",
+      "prompt/choices not found as specified",
+      "prompt.*not found as specified",
+      "choices not found as specified",
+      "specified prompt structure",
+      "Regex didn't match.*Power.*computed",
+      "Expected a line starting with 'Power computed'",
+      "Could not find a numeric power after 'Power computed'"
     ]
   },
-  "FUNC_MISSING_RETURN": {
-    "category": "Return values",
+  "STRING_FLOAT_CRASH": {
+    "category": "String to float conversion error",
     "regex": [
-      "function.*did not return a value",
-      "returned None",
-      "expected.*float.*got.*None(Type)?",
-      "AssertionError:.*return.*(float|number)"
+      "could not convert string to float",
+      "invalid literal for.*float",
+      "ValueError.*float",
+      "invalid literal for.*int",
+      "ValueError.*int.*base",
+      "float.*invalid",
+      "could not convert string to float: 'no'",
+      "could not convert string to float: 'Time'"
     ]
   },
-  "TYPE_MIX_STR_INT": {
-    "category": "Strings / casting",
+  "LEN_NONE_ERROR": {
+    "category": "len() or index on None object",
     "regex": [
-      "can only concatenate str \\(not \"int\"\\) to str",
-      "unsupported operand type\\(s\\) for \\+: 'int' and 'str'",
-      "TypeError:.*(int).*\\+.*(str)"
+      "object of type 'NoneType' has no len\\(\\)",
+      "NoneType.*is not iterable",
+      "NoneType.*object is not subscriptable",
+      "'NoneType' object is not iterable",
+      "len.*None"
     ]
   },
-  "FILE_PATH_ERROR": {
-    "category": "Files / I/O",
+  "WRONG_RETURN_TYPE": {
+    "category": "Wrong return type",
     "regex": [
-      "No such file or directory",
-      "FileNotFoundError: \\[Errno 2\\]"
+      "not an instance of <class 'float'>",
+      "not an instance of <class 'int'>",
+      "not an instance of <class 'str'>",
+      "compute_power must return a float",
+      "compute_energy must return a float",
+      "must be.*float",
+      "must be.*int"
     ]
-  }, 
+  },
+  "MISSING_ERROR_HANDLING": {
+    "category": "Missing ValueError or error handling",
+    "regex": [
+      "ValueError not raised",
+      "do not satisfy Ohm's law.*must raise a ValueError",
+      "compute_power must raise a ValueError",
+      "compute_energy must raise a ValueError",
+      "When.*not.*same length.*must raise a ValueError",
+      "input lists.*not.*same length.*ValueError"
+    ]
+  },
+  "MISSING_BAND_INSTRUCTION": {
+    "category": "Missing user instruction text",
+    "regex": [
+      "Missing clear instruction to enter bands from left to right",
+      "instructions to enter bands left-to-right",
+      "Expected a message informing the.*ohm range",
+      "specify the resistance range",
+      "Expected a score/points line",
+      "Expected a 'Final score'",
+      "use the word score to display it",
+      "display the final score"
+    ]
+  },
+  "MISSING_OPTIONAL_PARAM": {
+    "category": "Function missing optional parameter",
+    "regex": [
+      "missing 1 required positional argument: 'resistance'",
+      "compute_power\\(\\) missing.*required positional argument",
+      "resistance should be optional",
+      "must allow calling with only voltage and current"
+    ]
+  },
+  "HARDCODED_FILE_PATH": {
+    "category": "Hardcoded local file path",
+    "regex": [
+      "FileNotFoundError.*Users.*Downloads",
+      "No such file or directory.*C:\\\\Users",
+      "No such file or directory.*Users.*Desktop",
+      "FileNotFoundError.*\\.txt",
+      "hardcoded.*path",
+      "local.*file.*path"
+    ]
+  },
+  "FILE_READING_ERROR": {
+    "category": "File reading or parsing error",
+    "regex": [
+      "could not convert string to float: 'Time'",
+      "could not convert string to float: 'Voltage'",
+      "invalid literal for int.*'Voltage'",
+      "ValueError: invalid literal for int.*readline",
+      "reading header.*as data",
+      "skip.*header"
+    ]
+  },
+  "UNDEFINED_VARIABLE": {
+    "category": "Undefined variable or name error",
+    "regex": [
+      "name '.*' is not defined",
+      "NameError.*not defined",
+      "band3_color.*is not defined",
+      "band4_color.*is not defined",
+      "NameError"
+    ]
+  },
+  "LOOP_COUNT_ERROR": {
+    "category": "Loop counter or limit logic error",
+    "regex": [
+      "count.*must not exceed.*when limit is triggered",
+      "should NOT trigger the limit message",
+      "count.*exceed.*10",
+      "loop.*count.*wrong"
+    ]
+  },
+  "WRONG_MULTIMETER_RANGE": {
+    "category": "Wrong multimeter range logic",
+    "regex": [
+      "\\d+\\s*!=\\s*200000",
+      "\\d+\\s*!=\\s*20000",
+      "\\d+\\s*!=\\s*2000",
+      "\\d+\\s*!=\\s*200",
+      "200000\\s*!=\\s*\\d+",
+      "multimeter.*range.*wrong"
+    ]
+  },
+  "WRONG_MULTIPLIER": {
+    "category": "Color code multiplier incorrect",
+    "regex": [
+      "840\\s*!=\\s*14000000",
+      "620\\s*!=\\s*3100",
+      "400\\s*!=\\s*2000",
+      "10\\s*\\*\\s*color",
+      "wrong.*multiplier"
+    ]
+  },
+  "MISSING_DEPENDENCY": {
+    "category": "Missing import or dependency",
+    "regex": [
+      "ModuleNotFoundError",
+      "ImportError",
+      "No module named",
+      "cannot import name",
+      "Failed to import test module"
+    ]
+  },
+  "SYNTAX_ERROR": {
+    "category": "Syntax error in student code",
+    "regex": [
+      "SyntaxError",
+      "IndentationError",
+      "unexpected EOF",
+      "invalid syntax",
+      "unexpected indent"
+    ]
+  },
   "UNCLASSIFIED": {
-    "category": "Unclassified",
-    "regex": [
-      ".*"
-    ]
+    "category": "Unclassified error",
+    "regex": []
   }
 }
