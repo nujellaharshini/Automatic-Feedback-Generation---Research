@@ -9,6 +9,9 @@
 Introductory programming students often receive unhelpful autograder messages like *"Test Failed"* — complex stack traces that are hard to interpret and act on. This system bridges that gap by using **Large Language Models (LLMs)** to convert autograder output into clear, beginner-friendly feedback delivered automatically through **Canvas LMS**.
 
 Students access the tool directly through Canvas via an **LTI-integrated web app**, where they can upload their code, run the autograder, see their results in real time, and submit — all without ever leaving their course workflow. 
+
+Example: student application
+![Student submission](image.png)
 ---
 
 ## Key Features
